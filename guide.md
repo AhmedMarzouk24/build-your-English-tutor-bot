@@ -1,10 +1,10 @@
-> # 🤖 Smart Vocab Bot: Your AI-Powered English Coach
+> #  Smart Vocab Bot: Your AI-Powered English Coach
 
 Setting up your Smart Vocab Bot is actually easier than making a cup of coffee. Follow this step-by-step guide to get your bot up and running in no time!
 
 ---
 
-## 🧠 Step 1: The Brain (Google Sheets)
+##  Step 1: The Brain (Google Sheets)
 
 1.  **Create a Sheet:** Head over to [sheets.new](https://sheets.new).
 2.  **Tab Name:** Ensure your first tab is named `Sheet1`.
@@ -18,7 +18,7 @@ Setting up your Smart Vocab Bot is actually easier than making a cup of coffee. 
 
 ---
 
-## 🎭 Step 2: The Face (Telegram Bot)
+##  Step 2: The Face (Telegram Bot)
 
 1.  **Get a Token:** Chat with [@BotFather](https://t.me/BotFather) on Telegram. Use the `/newbot` command and follow the instructions to receive your **API Token**.
 2.  **Get your ID:** Chat with [@userinfobot](https://t.me/userinfobot) and hit **Start**. It will provide your **User ID** (a string of numbers).
@@ -26,7 +26,7 @@ Setting up your Smart Vocab Bot is actually easier than making a cup of coffee. 
 
 ---
 
-## ⚙️ Step 3: The Engine (Apps Script)
+##  Step 3: The Engine (Apps Script)
 
 1.  **Open the Editor:** In your Google Sheet, go to **Extensions** > **Apps Script**.
 2.  **Clean Slate:** Delete any existing code in the editor.
@@ -40,7 +40,7 @@ Setting up your Smart Vocab Bot is actually easier than making a cup of coffee. 
 
 ---
 
-## 🪄 Step 4: The Magic Link (Webhook)
+##  Step 4: The Magic Link (Webhook)
 
 To link Telegram to your script, copy the link below, replace the placeholders with your actual data, and paste it into your browser:
 
@@ -51,7 +51,7 @@ To link Telegram to your script, copy the link below, replace the placeholders w
 
 ---
 
-## 🌍 How to Change the Translation Language?
+##  How to Change the Translation Language?
 
 Want the bot to translate to Spanish, French, or any other language? It’s a one-second fix. Find this line in the code:
 
@@ -68,7 +68,7 @@ you will find it at line 101 of the code
 | German   | `de`     |
 
 
-## Need Help? /؟
+## Need Help?
 
 If you get stuck at any step, don't sweat it. Just reach out to me on [WhatsApp](https://wa.me/01118018956)
 
