@@ -69,7 +69,7 @@ const translation = LanguageApp.translate(word, 'en', 'ar');
 ```
 ## Need Help? /؟
 
-If you get stuck at any step, don't sweat it. Just reach out to me on [WhatsApp](wa.me/201118018956)
+If you get stuck at any step, don't sweat it. Just reach out to me on [WhatsApp](https://wa.me/01118018956)
 
 Happy Learning!
 
