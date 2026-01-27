@@ -26,6 +26,8 @@ Mastered words (Level 5) are the pros. They only pop up occasionally to make sur
 Features (quick reference)
 --------------------------
 
+<img src="[https://drive.google.com/uc?export=view&id=1aBcD_EfgHIjkLmNoPqRstuVwXyZ](https://drive.google.com/uc?export=view&id=9c92c49e-0fbc-4780-abf0-8964be8fba0d)" alt="شرح" width="600">
+
 - Weighted spaced repetition (levels 1–5)
 - On-the-fly translation via Google Apps Script
 - Audio pronunciation from Dictionary API
