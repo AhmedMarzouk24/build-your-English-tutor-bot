@@ -55,7 +55,10 @@ To link Telegram to your script, copy the link below, replace the placeholders w
 
 Want the bot to translate to Spanish, French, or any other language? It’s a one-second fix. Find this line in the code:
 
-
+```javascript
+const translation = LanguageApp.translate(word, 'en', 'ar');
+```
+you will find it at line 101 of the code 
 | Language | ISO code |
 |----------|----------|
 | Spanish  | `es`     |
@@ -64,9 +67,7 @@ Want the bot to translate to Spanish, French, or any other language? It’s a on
 | Hindi    | `hi`     |
 | German   | `de`     |
 
-```javascript
-const translation = LanguageApp.translate(word, 'en', 'ar');
-```
+
 ## Need Help? /؟
 
 If you get stuck at any step, don't sweat it. Just reach out to me on [WhatsApp](https://wa.me/01118018956)
