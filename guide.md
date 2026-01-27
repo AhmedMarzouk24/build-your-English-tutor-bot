@@ -1,4 +1,4 @@
-# 🤖 Smart Vocab Bot: Your AI-Powered English Coach
+> # 🤖 Smart Vocab Bot: Your AI-Powered English Coach
 
 Setting up your Smart Vocab Bot is actually easier than making a cup of coffee. Follow this step-by-step guide to get your bot up and running in no time!
 
@@ -66,5 +66,11 @@ Want the bot to translate to Spanish, French, or any other language? It’s a on
 
 ```javascript
 const translation = LanguageApp.translate(word, 'en', 'ar');
+```
+## Need Help? /؟
+
+If you get stuck at any step, don't sweat it. Just reach out to me on [WhatsApp](https://www.google.com/search?q=https://wa.me/201118018956)
+
+Happy Learning!
 
 
