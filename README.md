@@ -1,4 +1,4 @@
-Your Ultimate Smart Vocab Bot (V2.0)
+Your Ultimate Smart Vocab Bot 
 ====================================
 
 Yo! Let’s be real—learning English words is easy, but remembering them? That’s the hard part. Most of us just hoard lists of words in our notes and never look at them again.
