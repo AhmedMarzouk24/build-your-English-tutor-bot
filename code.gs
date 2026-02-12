@@ -1,250 +1,237 @@
 /**
- *  Smart English Vocab Bot - Fixed / Improved
- * Developed by: Ahmed Marzouk (reviewed & repaired)
+ * 🤖 Smart English Vocab Bot - Enhanced Version
+ * Developed by: Ahmed Marzouk
+ * Improved by: Claude
+ * Features: Auto-Translate, Spaced Repetition, Voice Pronunciation, Dictionary API, YouGlish
  */
 
 // --- ⚙️ CONFIGURATION ---
-// IMPORTANT: Replace these with real values before deploying.
-const TELEGRAM_TOKEN = 'YOUR_TOKEN';
-const CHAT_ID = 'YOUR_CHAT_ID'; // only used for scheduled sends; callbacks should use dynamic chat id
+const TELEGRAM_TOKEN = 'PASTE YPUR TOKEN HERE ';
+const CHAT_ID = 'PASTE YOUR ID HERE';
 
 /**
- * 1️ Main function to send the word
- * Selects a word based on a weighted system (harder words appear more often)
+ * 1️⃣ Main function to send the word
+ * Selects a word based on weighted spaced repetition
  */
 function sendDailyWordWithButtons() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
-  const data = sheet.getDataRange().getValues();
-
-  if (data.length < 2) {
-    Logger.log("File is empty.");
-    return;
-  }
-
-  // ---  Weighted system (Spaced Repetition Logic) ---
-  let weightedPool = [];
-  for (let i = 1; i < data.length; i++) {
-    let rowIndex = i + 1;
-    let level = data[i][2]; // column C (level)
-
-    // normalize level to integer (default to 1 if missing/invalid)
-    let lvl = parseInt(level);
-    if (isNaN(lvl) || lvl < 1) lvl = 1;
-    if (lvl > 5) lvl = 5;
-
-    // weight mapping:
-    // level 1 => 10, level 2 => 8, level 3 => 6, level 4 => 4, level 5 => 1
-    let weight = (lvl >= 5) ? 1 : (6 - lvl) * 2;
-
-    for (let j = 0; j < weight; j++) {
-      weightedPool.push(rowIndex);
+  try {
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const data = sheet.getDataRange().getValues();
+    
+    if (data.length < 2) {
+      Logger.log("File is empty.");
+      return;
     }
-  }
 
-  if (weightedPool.length === 0) {
-    Logger.log("No candidates found for selection.");
-    return;
-  }
+    // --- 🧠 Weighted Spaced Repetition Logic ---
+    let weightedPool = [];
+    for (let i = 1; i < data.length; i++) {
+      let rowIndex = i + 1;
+      let level = data[i][2]; // Column C (level)
+      
+      // Level 1 (new/hard) = weight 10, Level 5 (mastered) = weight 1
+      let weight = (level == 5 || level == "5") ? 1 : 10;
+      
+      for (let j = 0; j < weight; j++) {
+        weightedPool.push(rowIndex);
+      }
+    }
 
-  // pick a random row from the weighted pool
-  const chosenRowIndex = weightedPool[Math.floor(Math.random() * weightedPool.length)];
-  // validate chosenRowIndex exists in data
-  if (chosenRowIndex < 2 || chosenRowIndex > data.length) {
-    Logger.log("Selected row index out of range: " + chosenRowIndex);
-    return;
-  }
+    // Pick random row from weighted pool
+    const rowIndex = weightedPool[Math.floor(Math.random() * weightedPool.length)];
+    const word = data[rowIndex - 1][0]; // Column A
+    const example = data[rowIndex - 1][1]; // Column B
 
-  const word = data[chosenRowIndex - 1][0];     // column A
-  const example = data[chosenRowIndex - 1][1];  // column B
+    // Fetch English definition from API
+    const englishDef = getDefinitionFromAPI(word);
 
-  // fetch English definition from the API
-  const englishDef = getDefinitionFromAPI(word);
-
-  // prepare Telegram control buttons with YouGlish button
-  const youglishUrl = "https://youglish.com/pronounce/" + encodeURIComponent(word) + "/english";
-
-  const keyboard = {
-    inline_keyboard: [
-      [
-        { text: "Listen 🔊", callback_data: "listen_" + chosenRowIndex },
-        { text: "meaning👁️", callback_data: "show_ar_" + chosenRowIndex }
-      ],
-      [
-        { text: "YouGlish 🎥", url: youglishUrl }
-      ],
-      [
-        { text: "done✅", callback_data: "done_" + chosenRowIndex },
-        { text: "not yet⌛", callback_data: "later_" + chosenRowIndex },
-        { text: "delete🗑️", callback_data: "delete_" + chosenRowIndex }
+    // Prepare Telegram buttons with YouGlish
+    const youglishUrl = `https://youglish.com/pronounce/${encodeURIComponent(word)}/english`;
+    const keyboard = {
+      inline_keyboard: [
+        [
+          { text: "🔊 Listen", callback_data: `listen_${rowIndex}` },
+          { text: "👁️ Meaning", callback_data: `show_ar_${rowIndex}` }
+        ],
+        [
+          { text: "🎥 YouGlish", url: youglishUrl }
+        ],
+        [
+          { text: "✅ Done", callback_data: `done_${rowIndex}` },
+          { text: "⌛ Not Yet", callback_data: `later_${rowIndex}` },
+          { text: "🗑️ Delete", callback_data: `delete_${rowIndex}` }
+        ]
       ]
-    ]
-  };
+    };
 
-  // Build message text. Keep simple Markdown (Telegram 'Markdown') — be aware of characters in example/def that may need escaping.
-  const text =
-    "📖 *Context:* \n" + "_" + (example || "") + "_\n\n" +
-    "━━━━━━━━━━━━━\n" +
-    "🔤 *Word:* `" + (word || "") + "`\n" +
-    "📝 *Def:* \n" + (englishDef || "Definition N/A.") + "\n\n" +
-    "💡 *Try to guess the meaning!*";
+    const text = `📖 *Context:*\n_${example}_\n\n━━━━━━━━━━━━━\n🔤 *Word:* \`${word}\`\n📝 *Definition:*\n${englishDef}\n\n💡 *Try to guess the meaning!*`;
 
-  // When sending scheduled messages, use configured CHAT_ID (or replace with the desired chat ID)
-  sendToTelegram("sendMessage", {
-    chat_id: CHAT_ID,
-    text: text,
-    parse_mode: 'Markdown',
-    reply_markup: keyboard
-  });
+    sendToTelegram("sendMessage", {
+      chat_id: CHAT_ID,
+      text: text,
+      parse_mode: 'Markdown',
+      reply_markup: keyboard
+    });
+
+    Logger.log(`✅ Sent word: ${word} (Row ${rowIndex})`);
+    
+  } catch (error) {
+    Logger.log(`❌ Error in sendDailyWordWithButtons: ${error.message}`);
+    sendToTelegram("sendMessage", {
+      chat_id: CHAT_ID,
+      text: `⚠️ Error sending word: ${error.message}`
+    });
+  }
 }
 
 /**
- * 2️ Handle incoming commands (Webhook)
- * Deals with button presses (translation, pronunciation, level updates)
+ * 2️⃣ Handle incoming webhook callbacks
+ * Processes button presses (translation, pronunciation, level updates)
  */
 function doPost(e) {
   try {
-    if (!e || !e.postData || !e.postData.contents) {
-      return ContentService.createTextOutput('');
-    }
-
     const contents = JSON.parse(e.postData.contents);
-    if (!contents.callback_query) return ContentService.createTextOutput('');
+    
+    if (!contents.callback_query) return;
 
-    const callback = contents.callback_query;
-    const callbackData = callback.data || "";
+    const callbackData = contents.callback_query.data;
     const parts = callbackData.split('_');
     const action = parts[0];
-    const rowIndex = parseInt(parts.pop(), 10);
-
-    // get chat and message info from the callback payload (use dynamic chat id)
-    const message = callback.message || {};
-    const chat = (message.chat && message.chat.id) ? message.chat : null;
-    const chatId = chat ? chat.id : CHAT_ID; // fallback to global CHAT_ID if unavailable
-    const messageId = message.message_id;
-
+    const rowIndex = parseInt(parts[parts.length - 1]);
+    
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    const messageId = contents.callback_query.message.message_id;
 
-    // quick answer to Telegram to hide loading spinner
-    sendToTelegram("answerCallbackQuery", { callback_query_id: callback.id });
+    // Send quick acknowledgment to Telegram
+    sendToTelegram("answerCallbackQuery", {
+      callback_query_id: contents.callback_query.id
+    });
 
+    // Handle different actions
     if (action === 'show') {
-      if (!rowIndex || rowIndex < 1) {
-        sendToTelegram("sendMessage", { chat_id: chatId, text: "⚠️ Invalid item reference." });
-        return ContentService.createTextOutput('');
-      }
-
-      const word = sheet.getRange(rowIndex, 1).getValue();
-
-      //  On-demand automatic translation
-      const arabicMeaning = LanguageApp.translate(word, 'en', 'ar');
-
-      let currentText = message.text || "";
-      // ensure translation isn't added multiple times if user presses repeatedly
-      if (currentText.includes(" *Arabic Meaning:*")) return ContentService.createTextOutput('');
-
-      const newText = currentText + "\n\n *Arabic Meaning:* " + arabicMeaning;
-
-      sendToTelegram("editMessageText", {
-        chat_id: chatId,
-        message_id: messageId,
-        text: newText,
-        parse_mode: 'Markdown',
-        reply_markup: message.reply_markup // keep original buttons
-      });
-    } 
-    else if (action === 'listen') {
-      if (!rowIndex || rowIndex < 1) {
-        sendToTelegram("sendMessage", { chat_id: chatId, text: "⚠️ Invalid item reference." });
-        return ContentService.createTextOutput('');
-      }
-
-      const word = sheet.getRange(rowIndex, 1).getValue();
-      const audioUrl = getAudioFromAPI(word);
-
-      if (audioUrl) {
-        // choose sendAudio for mp3/wav/etc, sendVoice only for ogg/opus
-        if (/\.(ogg|oga|opus)(\?|$)/i.test(audioUrl)) {
-          sendToTelegram("sendVoice", {
-            chat_id: chatId,
-            voice: audioUrl
-          });
-        } else {
-          // fallback to sendAudio for common formats
-          sendToTelegram("sendAudio", {
-            chat_id: chatId,
-            audio: audioUrl,
-            caption: "Pronunciation of " + word
-          });
-        }
-      } else {
-        // simple alert if no audio found
-        sendToTelegram("sendMessage", {
-          chat_id: chatId,
-          text: "🔇 Sorry, no audio found for: " + word
-        });
-      }
+      handleShowTranslation(sheet, rowIndex, messageId, contents);
+      
+    } else if (action === 'listen') {
+      handleListenPronunciation(sheet, rowIndex);
+      
+    } else if (action === 'done') {
+      handleDone(sheet, rowIndex, messageId);
+      
+    } else if (action === 'later') {
+      handleLater(sheet, rowIndex, messageId);
+      
+    } else if (action === 'delete') {
+      handleDelete(sheet, rowIndex, messageId);
     }
-    else {
-      // update word level or delete it
-      let statusText = "";
-      if (!rowIndex || rowIndex < 1) {
-        sendToTelegram("sendMessage", { chat_id: chatId, text: "⚠️ Invalid item reference for update." });
-        return ContentService.createTextOutput('');
-      }
-
-      if (action === 'done') {
-        sheet.getRange(rowIndex, 3).setValue(5);
-        statusText = "Mastered! ⭐ (I will show this less often)";
-      } else if (action === 'later') {
-        sheet.getRange(rowIndex, 3).setValue(1);
-        statusText = "Noted! ⏳ I will keep reminding you.";
-      } else if (action === 'delete') {
-        // CAUTION: deleting rows referenced by other outstanding messages can break indices for other callbacks.
-        sheet.deleteRow(rowIndex);
-        statusText = "Deleted from your list 🗑️";
-      } else {
-        statusText = "Unknown action.";
-      }
-
-      sendToTelegram("editMessageText", {
-        chat_id: chatId,
-        message_id: messageId,
-        text: "✅ " + statusText
-      });
-    }
-
-    return ContentService.createTextOutput('');
-  } catch (err) {
-    Logger.log("Error in doPost: " + err);
-    // Do not expose internal errors to end users, but provide a simple message if possible
-    try {
-      const contents = JSON.parse(e.postData.contents || "{}");
-      const callback = contents.callback_query || {};
-      const chat = (callback.message && callback.message.chat) ? callback.message.chat.id : CHAT_ID;
-      sendToTelegram("sendMessage", { chat_id: chat, text: "⚠️ An internal error occurred." });
-    } catch (e2) { /* ignore */ }
-    return ContentService.createTextOutput('');
+    
+  } catch (error) {
+    Logger.log(`❌ Error in doPost: ${error.message}`);
   }
 }
 
-// ---  Helper Functions ---
+/**
+ * 🔧 Handler Functions
+ */
+
+function handleShowTranslation(sheet, rowIndex, messageId, contents) {
+  const word = sheet.getRange(rowIndex, 1).getValue();
+  
+  // ✨ On-demand automatic translation
+  const arabicMeaning = LanguageApp.translate(word, 'en', 'ar');
+  
+  let currentText = contents.callback_query.message.text;
+  
+  // Prevent duplicate translations
+  if (currentText.includes("🎯 *Arabic Meaning:*")) {
+    sendToTelegram("answerCallbackQuery", {
+      callback_query_id: contents.callback_query.id,
+      text: "Already showing translation!",
+      show_alert: false
+    });
+    return;
+  }
+
+  const newText = `${currentText}\n\n🎯 *Arabic Meaning:* ${arabicMeaning}`;
+  
+  sendToTelegram("editMessageText", {
+    chat_id: CHAT_ID,
+    message_id: messageId,
+    text: newText,
+    parse_mode: 'Markdown',
+    reply_markup: contents.callback_query.message.reply_markup
+  });
+}
+
+function handleListenPronunciation(sheet, rowIndex) {
+  const word = sheet.getRange(rowIndex, 1).getValue();
+  const audioUrl = getAudioFromAPI(word);
+  
+  if (audioUrl) {
+    sendToTelegram("sendVoice", {
+      chat_id: CHAT_ID,
+      voice: audioUrl
+    });
+  } else {
+    sendToTelegram("sendMessage", {
+      chat_id: CHAT_ID,
+      text: `🔇 Sorry, no audio found for: *${word}*`,
+      parse_mode: 'Markdown'
+    });
+  }
+}
+
+function handleDone(sheet, rowIndex, messageId) {
+  sheet.getRange(rowIndex, 3).setValue(5);
+  sendToTelegram("editMessageText", {
+    chat_id: CHAT_ID,
+    message_id: messageId,
+    text: "✅ Mastered! ⭐\n\n_I'll show this word less often now._",
+    parse_mode: 'Markdown'
+  });
+}
+
+function handleLater(sheet, rowIndex, messageId) {
+  sheet.getRange(rowIndex, 3).setValue(1);
+  sendToTelegram("editMessageText", {
+    chat_id: CHAT_ID,
+    message_id: messageId,
+    text: "⏳ Noted!\n\n_I'll keep reminding you about this word._",
+    parse_mode: 'Markdown'
+  });
+}
+
+function handleDelete(sheet, rowIndex, messageId) {
+  const word = sheet.getRange(rowIndex, 1).getValue();
+  sheet.deleteRow(rowIndex);
+  sendToTelegram("editMessageText", {
+    chat_id: CHAT_ID,
+    message_id: messageId,
+    text: `🗑️ Deleted: *${word}*\n\n_Removed from your vocabulary list._`,
+    parse_mode: 'Markdown'
+  });
+}
+
+// --- 🛠️ Helper Functions ---
 
 /**
- * Fetch audio pronunciation URL and fix protocol links
+ * Fetch audio pronunciation URL from Dictionary API
  */
 function getAudioFromAPI(word) {
   try {
-    const res = UrlFetchApp.fetch("https://api.dictionaryapi.dev/api/v2/entries/en/" + encodeURIComponent(word), {muteHttpExceptions: true});
-    if (res.getResponseCode() !== 200) return null;
-    const data = JSON.parse(res.getContentText());
-
+    const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`;
+    const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    
+    if (response.getResponseCode() !== 200) return null;
+    
+    const data = JSON.parse(response.getContentText());
     let audio = null;
-    // deep search for the first available audio URL in the API
+
+    // Deep search for first available audio URL
     for (let entry of data) {
-      if (entry.phonetics && Array.isArray(entry.phonetics)) {
-        for (let p of entry.phonetics) {
-          if (p && p.audio && p.audio !== "") {
-            audio = p.audio;
+      if (entry.phonetics) {
+        for (let phonetic of entry.phonetics) {
+          if (phonetic.audio && phonetic.audio !== "") {
+            audio = phonetic.audio;
             break;
           }
         }
@@ -252,66 +239,121 @@ function getAudioFromAPI(word) {
       if (audio) break;
     }
 
-    if (audio) {
-      // fix link if it starts with // to ensure it works in Telegram
-      if (audio.startsWith("//")) audio = "https:" + audio;
-      // dictionary API sometimes returns relative or invalid links - basic validation
-      if (!/^https?:\/\//i.test(audio)) return null;
-      return audio;
+    // Fix protocol-relative URLs
+    if (audio && audio.startsWith("//")) {
+      audio = `https:${audio}`;
     }
+
+    return audio;
+    
+  } catch (error) {
+    Logger.log(`❌ Error fetching audio for "${word}": ${error.message}`);
     return null;
-  } catch (e) { return null; }
+  }
 }
 
 /**
- * Fetch word definition from dictionary API
+ * Fetch word definition from Dictionary API
  */
 function getDefinitionFromAPI(word) {
   try {
-    const res = UrlFetchApp.fetch("https://api.dictionaryapi.dev/api/v2/entries/en/" + encodeURIComponent(word), {muteHttpExceptions: true});
-    if (res.getResponseCode() === 200) {
-      const data = JSON.parse(res.getContentText());
-      if (Array.isArray(data) && data[0] && data[0].meanings && data[0].meanings[0] && data[0].meanings[0].definitions && data[0].meanings[0].definitions[0]) {
+    const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`;
+    const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    
+    if (response.getResponseCode() === 200) {
+      const data = JSON.parse(response.getContentText());
+      
+      // Get first definition
+      if (data[0]?.meanings?.[0]?.definitions?.[0]?.definition) {
         return data[0].meanings[0].definitions[0].definition;
       }
     }
-    return "Definition N/A.";
-  } catch (e) { return "Definition N/A."; }
-}
-
-/**
- * Send requests to the Telegram API
- */
-function sendToTelegram(method, payload) {
-  const url = "https://api.telegram.org/bot" + TELEGRAM_TOKEN + "/" + method;
-  try {
-    return UrlFetchApp.fetch(url, {
-      method: 'post',
-      contentType: 'application/json',
-      payload: JSON.stringify(payload)
-    });
-  } catch (e) {
-    Logger.log("Telegram API error (" + method + "): " + e);
-    return null;
+    
+    return "Definition not available.";
+    
+  } catch (error) {
+    Logger.log(`❌ Error fetching definition for "${word}": ${error.message}`);
+    return "Definition not available.";
   }
 }
 
 /**
- * Set up trigger to run every 5 hours
- * Run this function only once from the Editor
+ * Send requests to Telegram Bot API
+ */
+function sendToTelegram(method, payload) {
+  try {
+    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/${method}`;
+    const response = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    });
+    
+    const result = JSON.parse(response.getContentText());
+    
+    if (!result.ok) {
+      Logger.log(`⚠️ Telegram API Error: ${result.description}`);
+    }
+    
+    return response;
+    
+  } catch (error) {
+    Logger.log(`❌ Error sending to Telegram: ${error.message}`);
+    throw error;
+  }
+}
+
+/**
+ * Set up time-based trigger (run once from Script Editor)
  */
 function createFiveHourTrigger() {
+  // Remove existing triggers for this function
   const triggers = ScriptApp.getProjectTriggers();
-  for (let i = 0; i < triggers.length; i++) {
-    if (triggers[i].getHandlerFunction() === 'sendDailyWordWithButtons') {
-      ScriptApp.deleteTrigger(triggers[i]);
+  for (let trigger of triggers) {
+    if (trigger.getHandlerFunction() === 'sendDailyWordWithButtons') {
+      ScriptApp.deleteTrigger(trigger);
     }
   }
 
+  // Create new 5-hour trigger
   ScriptApp.newTrigger('sendDailyWordWithButtons')
     .timeBased()
-    .everyHours(5)
+    .everyHours(8)
     .create();
 
-  Logger.log("done, trigger created");
+  Logger.log("✅ Trigger created successfully! Bot will send words every 5 hours.");
+}
+
+/**
+ * 🧪 Test function - Send a word immediately
+ */
+function testSendWord() {
+  Logger.log("🧪 Testing word sending...");
+  sendDailyWordWithButtons();
+}
+
+/**
+ * 🔧 Setup webhook (run once after deploying as Web App)
+ */
+function setWebhook() {
+  const webAppUrl = 'YOUR_WEB_APP_URL_HERE'; // Get this after deploying
+  const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/setWebhook?url=${webAppUrl}`;
+  
+  const response = UrlFetchApp.fetch(url);
+  Logger.log(response.getContentText());
+}
+
+/**
+
+/**
+ * 📊 View current trigger status
+ */
+function viewTriggers() {
+  const triggers = ScriptApp.getProjectTriggers();
+  Logger.log(`📋 Active Triggers (${triggers.length}):`);
+  
+  for (let trigger of triggers) {
+    Logger.log(`  - ${trigger.getHandlerFunction()} (${trigger.getTriggerSource()})`);
+  }
 }
